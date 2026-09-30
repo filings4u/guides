@@ -22,5 +22,5 @@ $("#export").onclick=async()=>{
  setTimeout(()=>URL.revokeObjectURL(url),30000);
  $("#message").hidden=false;$("#message").textContent="Guide exported. Import it at guides.screenings4u.com.";
 };
-$("#clear").onclick=async()=>{if(confirm("Clear this recording?")){await call({type:"CLEAR_RECORDING"});await render()}};
+$("#clear").onclick=async()=>{await call({type:"CLEAR_RECORDING"});await render()};
 render();
