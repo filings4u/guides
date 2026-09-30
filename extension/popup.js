@@ -1,26 +1,166 @@
-const $=s=>document.querySelector(s);
-async function call(msg){return chrome.runtime.sendMessage(msg)}
-async function render(){
- const r=await call({type:"GET_STATE"}),s=r?.state||{};
- const hasGuide=!!s.guide;
- $("#setup").hidden=!!s.recording||hasGuide;
- $("#active").hidden=!s.recording&&!hasGuide;
- $("#recordingStatus").textContent=s.recording?"● Recording":"● Recording stopped";
- $("#recordingStatus").className=s.recording?"on":"";
- $("#count").textContent=(s.steps?.length||0)+" steps captured";
- $("#stop").hidden=!s.recording;
+const $ = selector => document.querySelector(selector);
+
+async function call(message) {
+  return chrome.runtime.sendMessage(message);
 }
-$("#start").onclick=async()=>{const title=$("#title").value.trim();if(!title){$("#message").hidden=false;$("#message").textContent="Enter a guide title.";return}await call({type:"START_RECORDING",title,portal:$("#portal").value,audience:"Customer"});await render()};
-$("#stop").onclick=async()=>{await call({type:"STOP_RECORDING"});await render()};
-$("#export").onclick=async()=>{
- const r=await call({type:"GET_STATE"}),s=r?.state||{};
- if(!s.guide){$("#message").hidden=false;$("#message").textContent="There is no recording to export.";return}
- const guide={...s.guide,status:"draft",intro:"",steps:s.steps||[]};
- const blob=new Blob([JSON.stringify(guide,null,2)],{type:"application/json"});
- const url=URL.createObjectURL(blob),a=document.createElement("a");
- a.href=url;a.download=(guide.title||"screenings4u-guide").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")+".json";a.click();
- setTimeout(()=>URL.revokeObjectURL(url),30000);
- $("#message").hidden=false;$("#message").textContent="Guide exported. Import it at guides.screenings4u.com.";
+
+function showMessage(text, error = false) {
+  const box = $("#message");
+  box.hidden = !text;
+  box.textContent = text || "";
+  box.className = "status " + (error ? "bad" : "");
+}
+
+async function render() {
+  const [authResponse, stateResponse] = await Promise.all([
+    call({ type: "AUTH_STATUS" }),
+    call({ type: "GET_STATE" })
+  ]);
+
+  const signedIn = !!authResponse?.signed_in;
+  const state = stateResponse?.state || {};
+
+  $("#loginView").hidden = signedIn;
+  $("#recorderView").hidden = !signedIn;
+
+  if (!signedIn) return;
+
+  $("#accountEmail").textContent =
+    authResponse.user?.email || "Signed in";
+
+  const hasGuide = !!state.guide;
+
+  $("#newGuideView").hidden = hasGuide;
+  $("#activeView").hidden = !hasGuide;
+
+  if (!hasGuide) return;
+
+  $("#recordingStatus").textContent =
+    state.recording
+      ? "● Recording"
+      : "● Recording finished";
+
+  $("#recordingStatus").className =
+    state.recording ? "ok" : "";
+
+  $("#count").textContent =
+    (state.steps?.length || 0) + " steps saved";
+
+  $("#saveStatus").textContent =
+    state.saving
+      ? "Saving…"
+      : (state.last_error || "Saved to Guide Builder");
+
+  $("#saveStatus").className =
+    state.last_error ? "bad" : "";
+
+  $("#stop").hidden = !state.recording;
+}
+
+$("#signIn").onclick = async () => {
+  showMessage("");
+
+  const email = $("#email").value.trim();
+  const password = $("#password").value;
+
+  if (!email || !password) {
+    showMessage("Enter your email and password.", true);
+    return;
+  }
+
+  const response = await call({
+    type: "SIGN_IN",
+    email,
+    password
+  });
+
+  if (!response?.ok) {
+    showMessage(
+      response?.error || "Unable to sign in.",
+      true
+    );
+    return;
+  }
+
+  $("#password").value = "";
+  await render();
 };
-$("#clear").onclick=async()=>{await call({type:"CLEAR_RECORDING"});await render()};
-render();
+
+$("#signOut").onclick = async () => {
+  await call({ type: "SIGN_OUT" });
+  showMessage("");
+  await render();
+};
+
+$("#start").onclick = async () => {
+  showMessage("");
+
+  const title = $("#title").value.trim();
+
+  if (!title) {
+    showMessage("Enter a guide title.", true);
+    return;
+  }
+
+  const response = await call({
+    type: "START_RECORDING",
+    title,
+    portal: $("#portal").value,
+    audience: "Customer"
+  });
+
+  if (!response?.ok) {
+    showMessage(
+      response?.error || "Could not start recording.",
+      true
+    );
+    return;
+  }
+
+  await render();
+};
+
+$("#stop").onclick = async () => {
+  showMessage("");
+
+  const response = await call({
+    type: "STOP_RECORDING"
+  });
+
+  if (!response?.ok) {
+    showMessage(
+      response?.error || "Could not finish recording.",
+      true
+    );
+  }
+
+  await render();
+};
+
+$("#openGuide").onclick = async () => {
+  showMessage("");
+
+  const response = await call({
+    type: "OPEN_GUIDE"
+  });
+
+  if (!response?.ok) {
+    showMessage(
+      response?.error || "Could not open the guide.",
+      true
+    );
+  }
+};
+
+$("#clear").onclick = async () => {
+  await call({ type: "CLEAR_RECORDING" });
+  showMessage("");
+  await render();
+};
+
+render().catch(error => {
+  showMessage(
+    error?.message || "Recorder could not load.",
+    true
+  );
+});
