@@ -1,4 +1,7 @@
 (() => {
+  if (globalThis.__S4U_GUIDE_RECORDER_LOADED__) return;
+  globalThis.__S4U_GUIDE_RECORDER_LOADED__ = true;
+
   let busy = false;
   let lastCaptureAt = 0;
 
@@ -217,6 +220,12 @@
       }, 300);
     }
   }
+
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message?.type === "RECORDER_PING") {
+      sendResponse({ ok: true, loaded: true });
+    }
+  });
 
   document.addEventListener("pointerdown", capture, true);
 })();

@@ -161,6 +161,54 @@ async function guideApi(payload, token = null) {
   return result;
 }
 
+async function ensureRecorderOnActiveTab() {
+  const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+  const tab = tabs[0];
+
+  if (!tab?.id || !tab.url) {
+    throw new Error("Open the screenings4u portal tab you want to record, then start recording again.");
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(tab.url);
+  } catch {
+    throw new Error("Open a screenings4u portal page before starting the recorder.");
+  }
+
+  const hostname = parsed.hostname.toLowerCase();
+  const allowedHost =
+    hostname === "screenings4u.com" ||
+    hostname.endsWith(".screenings4u.com");
+
+  if (
+    parsed.protocol !== "https:" ||
+    !allowedHost ||
+    hostname === "guides.screenings4u.com"
+  ) {
+    throw new Error("Start recording while the portal tab is active, not the Guide Builder tab.");
+  }
+
+  try {
+    const ping = await chrome.tabs.sendMessage(tab.id, { type: "RECORDER_PING" });
+    if (ping?.ok) return tab;
+  } catch {
+    // Content script is not present yet.
+  }
+
+  await chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    files: ["content.js"]
+  });
+
+  const ping = await chrome.tabs.sendMessage(tab.id, { type: "RECORDER_PING" });
+  if (!ping?.ok) {
+    throw new Error("The Guide Recorder could not attach to this portal page.");
+  }
+
+  return tab;
+}
+
 function normalizeStep(step, index) {
   return {
     id: step.id,
@@ -267,6 +315,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     if (message?.type === "START_RECORDING") {
       await getAccessToken();
+      await ensureRecorderOnActiveTab();
 
       const guide = {
         id: crypto.randomUUID(),
