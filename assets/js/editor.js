@@ -45,7 +45,7 @@ function render(){
  </div></article>`).join('');
 }
 async function load(){
- await S4UGuides.requireAuth();
+ await S4UGuard.init();
  if(!guideId){location.replace('./');return}
  const r=await S4UGuides.api({action:'get_guide',id:guideId});
  guide=r.guide;
