@@ -7,14 +7,14 @@
 <meta name="robots" content="noindex,nofollow">
 <title>screenings4u Guide Builder</title>
 <link rel="icon" href="images/fav.png">
-<link rel="stylesheet" href="assets/css/app.css?v=1">
+<link rel="stylesheet" href="assets/css/app.css?v=3">
 </head>
 <body>
 <header class="topbar">
   <a class="brand" href="./"><img src="images/logo.png" alt="screenings4u"><span><strong>Guide Builder</strong><small>Documentation Studio</small></span></a>
   <div class="top-actions">
     <label class="btn ghost">Import Guide<input id="importFile" type="file" accept=".json,application/json" hidden></label>
-    <button id="newGuide" class="btn primary">Create Guide</button>
+    <a id="membersLink" class="btn ghost" href="members.html" hidden>Members</a><button id="signOut" class="btn ghost">Sign Out</button><button id="newGuide" class="btn primary">Create Guide</button>
   </div>
 </header>
 <main class="shell">
@@ -53,5 +53,5 @@
   </form>
  </div>
 </div>
-<script src="assets/js/app.js?v=2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="assets/js/runtime-config.js?v=1"></script><script src="assets/js/auth-client.js?v=1"></script><script src="assets/js/app.js?v=3"></script>
 </body></html>
