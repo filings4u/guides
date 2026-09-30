@@ -22,3 +22,12 @@
 .role-pill{display:inline-block;width:max-content;border-radius:999px;background:#edf3f9;color:var(--navy);padding:5px 9px;font-size:11px;font-weight:900;text-transform:capitalize}
 .btn.small{padding:7px 10px;font-size:11px}
 @media(max-width:700px){.member-form{grid-template-columns:1fr}.member-row{grid-template-columns:1fr 1fr}.member-row.header{display:none}.auth-card{padding:24px}}
+
+.guard-pending body{visibility:hidden!important}
+.turnstile-wrap{min-height:68px;margin:14px 0;display:flex;align-items:center;justify-content:center}
+.session-warning{position:fixed;inset:0;background:rgba(6,23,40,.72);z-index:9999;display:grid;place-items:center;padding:20px}
+.session-warning[hidden]{display:none}
+.session-warning-card{width:min(460px,100%);background:#fff;border-radius:20px;padding:28px;box-shadow:0 22px 70px rgba(0,0,0,.28)}
+.session-warning-card h2{color:var(--navy);font-size:26px;margin:8px 0}
+.session-warning-card p{color:var(--muted);line-height:1.55}
+.session-warning-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
