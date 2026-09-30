@@ -23,14 +23,20 @@ window.S4UGuard=(()=>{
  function touch(){last=Date.now();if(modal)modal.hidden=true;schedule()}
  async function init(){
   document.documentElement.classList.add("guard-pending");
-  await S4UGuides.requireAuth();
-  const status=await S4UGuides.api({action:"status"});
-  if(!status?.member?.active)throw new Error("Guide Builder access is not active.");
-  document.documentElement.classList.remove("guard-pending");
-  ["click","keydown","mousemove","scroll","touchstart"].forEach(ev=>window.addEventListener(ev,touch,{passive:true}));
-  document.addEventListener("visibilitychange",()=>{if(!document.hidden){last=Date.now();schedule()}});
-  schedule();
-  return status.member;
+  try{
+    await S4UGuides.requireAuth();
+    const status=await S4UGuides.api({action:"status"});
+    if(!status?.member?.active)throw Object.assign(new Error("Guide Builder access is not active."),{status:403});
+    document.documentElement.classList.remove("guard-pending");
+    ["click","keydown","mousemove","scroll","touchstart"].forEach(ev=>window.addEventListener(ev,touch,{passive:true}));
+    document.addEventListener("visibilitychange",()=>{if(!document.hidden){last=Date.now();schedule()}});
+    schedule();
+    return status.member;
+  }catch(err){
+    await S4UGuides.sb.auth.signOut().catch(()=>{});
+    location.replace("login.html?reason="+encodeURIComponent(err?.status===403?"access":"session"));
+    throw err;
+  }
  }
  return {init,touch};
 })();
