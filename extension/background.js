@@ -24,12 +24,14 @@ chrome.runtime.onMessage.addListener((msg,sender,sendResponse)=>{
     if(msg?.type==="RECORD_CLICK"){
       const state=await getState();
       if(!state.recording||!sender.tab?.id){sendResponse({ok:false,ignored:true});return}
-      await new Promise(r=>setTimeout(r,120));
       let screenshot=null;
       try{
         screenshot=await chrome.tabs.captureVisibleTab(sender.tab.windowId,{format:"png"});
       }catch(error){
-        sendResponse({ok:false,error:"Screenshot capture failed: "+(error?.message||String(error))});
+        const stateNow=await getState();
+        stateNow.last_error="Screenshot capture failed: "+(error?.message||String(error));
+        await setState(stateNow);
+        sendResponse({ok:false,error:stateNow.last_error});
         return;
       }
       const step={
