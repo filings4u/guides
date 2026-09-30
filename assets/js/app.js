@@ -43,9 +43,7 @@ function render(){
 }
 
 async function load(){
- await S4UGuides.requireAuth();
- const boot=await S4UGuides.bootstrap();
- member=boot.member;
+ member=await S4UGuard.init();
  if(member?.role==='admin')$('#membersLink').hidden=false;
  const r=await S4UGuides.api({action:'list_guides'});
  guides=r.guides||[];
