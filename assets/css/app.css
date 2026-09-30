@@ -31,3 +31,6 @@
 .session-warning-card h2{color:var(--navy);font-size:26px;margin:8px 0}
 .session-warning-card p{color:var(--muted);line-height:1.55}
 .session-warning-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+
+.auth-wordmark{font-size:24px;font-weight:900;letter-spacing:-.03em;color:var(--navy);margin-bottom:24px}
+.brand-wordmark{font-size:20px;font-weight:900;letter-spacing:-.03em;color:var(--navy)}
