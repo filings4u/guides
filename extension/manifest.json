@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "screenings4u Guide Recorder",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "Record screenings4u portal workflows and save screenshots directly to Guide Builder.",
   "permissions": [
     "activeTab",
@@ -25,9 +25,6 @@
     {
       "matches": [
         "https://*.screenings4u.com/*"
-      ],
-      "exclude_matches": [
-        "https://guides.screenings4u.com/*"
       ],
       "js": [
         "content.js"

@@ -161,52 +161,50 @@ async function guideApi(payload, token = null) {
   return result;
 }
 
-async function ensureRecorderOnActiveTab() {
-  const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-  const tab = tabs[0];
-
-  if (!tab?.id || !tab.url) {
-    throw new Error("Open the screenings4u portal tab you want to record, then start recording again.");
-  }
-
-  let parsed;
+function isRecordablePortalUrl(url) {
   try {
-    parsed = new URL(tab.url);
+    const parsed = new URL(url);
+    const hostname = parsed.hostname.toLowerCase();
+    return parsed.protocol === "https:" &&
+      (hostname === "screenings4u.com" || hostname.endsWith(".screenings4u.com")) &&
+      hostname !== "guides.screenings4u.com";
   } catch {
+    return false;
+  }
+}
+
+async function findRecorderTargetTab() {
+  const tabs = await chrome.tabs.query({ currentWindow: true });
+  const candidates = tabs
+    .filter(tab => tab?.id && tab?.url && isRecordablePortalUrl(tab.url))
+    .sort((a, b) => Number(b.lastAccessed || 0) - Number(a.lastAccessed || 0));
+  if (!candidates.length) {
+    throw new Error("Open the screenings4u portal page you want to record in another tab, then click Start Recording again.");
+  }
+  return candidates[0];
+}
+
+async function ensureRecorderOnTab(tab = null) {
+  tab = tab || await findRecorderTargetTab();
+  if (!tab?.id || !isRecordablePortalUrl(tab.url)) {
     throw new Error("Open a screenings4u portal page before starting the recorder.");
   }
-
-  const hostname = parsed.hostname.toLowerCase();
-  const allowedHost =
-    hostname === "screenings4u.com" ||
-    hostname.endsWith(".screenings4u.com");
-
-  if (
-    parsed.protocol !== "https:" ||
-    !allowedHost ||
-    hostname === "guides.screenings4u.com"
-  ) {
-    throw new Error("Start recording while the portal tab is active, not the Guide Builder tab.");
-  }
-
   try {
     const ping = await chrome.tabs.sendMessage(tab.id, { type: "RECORDER_PING" });
     if (ping?.ok) return tab;
-  } catch {
-    // Content script is not present yet.
-  }
+  } catch {}
 
-  await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    files: ["content.js"]
-  });
-
+  await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["content.js"] });
   const ping = await chrome.tabs.sendMessage(tab.id, { type: "RECORDER_PING" });
-  if (!ping?.ok) {
-    throw new Error("The Guide Recorder could not attach to this portal page.");
-  }
-
+  if (!ping?.ok) throw new Error("The Guide Recorder could not attach to this portal page.");
   return tab;
+}
+
+async function pushRecorderState(tabId, recording) {
+  if (!tabId) return;
+  try {
+    await chrome.tabs.sendMessage(tabId, { type: "RECORDER_STATE", recording: !!recording });
+  } catch {}
 }
 
 function normalizeStep(step, index) {
@@ -275,6 +273,7 @@ chrome.runtime.onInstalled.addListener(async () => {
   const state = await getState();
   state.recording = false;
   state.saving = false;
+  state.target_tab_id = null;
   await setState(state);
 });
 
@@ -287,6 +286,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         signed_in: !!auth,
         user: auth?.user || null
       });
+      return;
+    }
+
+    if (message?.type === "AUTH_FROM_SITE") {
+      const accessToken = String(message.access_token || "").trim();
+      if (!accessToken) throw new Error("Guide Builder session is missing.");
+      const auth = {
+        access_token: accessToken,
+        refresh_token: String(message.refresh_token || ""),
+        expires_at: Number(message.expires_at || 0) > 10000000000
+          ? Number(message.expires_at)
+          : Number(message.expires_at || 0) * 1000,
+        user: message.user || null
+      };
+      await guideApi({ action: "status" }, accessToken);
+      await setAuth(auth);
+      sendResponse({ ok: true, user: auth.user });
       return;
     }
 
@@ -313,9 +329,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return;
     }
 
-    if (message?.type === "START_RECORDING") {
+    if (message?.type === "START_RECORDING" || message?.type === "START_RECORDING_FROM_SITE") {
       await getAccessToken();
-      await ensureRecorderOnActiveTab();
+      const targetTab = await ensureRecorderOnTab();
 
       const guide = {
         id: crypto.randomUUID(),
@@ -349,11 +365,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           id: result.guide?.id || guide.id,
           version: result.guide?.version || 1
         },
-        steps: []
+        steps: [],
+        target_tab_id: targetTab.id
       };
 
       await setState(state);
-      sendResponse({ ok: true, state });
+      await pushRecorderState(targetTab.id, true);
+      await chrome.tabs.update(targetTab.id, { active: true });
+      if (targetTab.windowId) {
+        try { await chrome.windows.update(targetTab.windowId, { focused: true }); } catch {}
+      }
+      sendResponse({ ok: true, state, guide_id: state.guide.id });
       return;
     }
 
@@ -361,6 +383,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const state = await getState();
       state.recording = false;
       await setState(state);
+      await pushRecorderState(state.target_tab_id, false);
       await saveGuide(state);
       sendResponse({
         ok: true,
@@ -371,12 +394,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     if (message?.type === "CLEAR_RECORDING") {
+      const prior = await getState();
+      await pushRecorderState(prior.target_tab_id, false);
       const state = {
         recording: false,
         guide: null,
         steps: [],
         saving: false,
-        last_error: null
+        last_error: null,
+        target_tab_id: null
       };
       await setState(state);
       sendResponse({ ok: true, state });

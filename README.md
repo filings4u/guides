@@ -15,7 +15,7 @@ Guide Builder is separate from every screenings4u portal. The browser extension 
 - Editable guide title, introduction, and step instructions
 - Screenshot display with numbered click markers
 - Branded print / PDF output
-- Chrome / Edge Manifest V3 recorder
+- Chrome / Edge Manifest V3 recorder controlled directly from the Guide Builder website
 - Sensitive-field masking in the recorder
 - CNAME for guides.screenings4u.com
 
@@ -31,3 +31,15 @@ Guide Builder is separate from every screenings4u portal. The browser extension 
 - White-label PDF branding
 - AI-assisted step wording
 - Guide health checks when portal UI changes
+
+
+## Recorder flow (v2.3)
+
+1. Load the `extension/` directory as an unpacked Chrome/Edge extension.
+2. Sign in to `https://guides.screenings4u.com/`. The website passes the current Guide Builder session to the recorder securely through the extension content-script bridge.
+3. Open the screenings4u portal page you want to document in another tab.
+4. Click **Start Recording** on the Guide Builder website, enter the guide details, and begin. The extension selects the most recently used screenings4u portal tab and focuses it.
+5. Each interaction is captured on pointer-down before the portal action changes the page. The screenshot, click position, URL, page title, and element metadata are uploaded to the existing `guide-builder` API and saved as guide steps.
+6. Return to Guide Builder and click **Finish Recording**. The completed draft opens in the editor.
+
+If Guide Builder says **Recorder not connected**, reload the unpacked extension after updating its files and refresh the Guide Builder page.

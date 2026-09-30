@@ -7,20 +7,20 @@
 <meta name="robots" content="noindex,nofollow"><meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate"><meta name="referrer" content="no-referrer">
 <title>screenings4u Guide Builder</title>
 
-<link rel="stylesheet" href="assets/css/app.css?v=3">
+<link rel="stylesheet" href="assets/css/app.css?v=4">
 </head>
 <body>
 <header class="topbar">
   <a class="brand" href="./"><span class="brand-wordmark">screenings4u</span><span><strong>Guide Builder</strong><small>Documentation Studio</small></span></a>
   <div class="top-actions">
     <label class="btn ghost">Import Guide<input id="importFile" type="file" accept=".json,application/json" hidden></label>
-    <a id="membersLink" class="btn ghost" href="members.html" hidden>Members</a><button id="signOut" class="btn ghost">Sign Out</button><button id="newGuide" class="btn primary">Create Guide</button>
+    <a id="membersLink" class="btn ghost" href="members.html" hidden>Members</a><button id="signOut" class="btn ghost">Sign Out</button><button id="startRecorderTop" class="btn recorder-btn">Start Recording</button><button id="newGuide" class="btn primary">Create Guide</button>
   </div>
 </header>
 <main class="shell">
   <section class="hero">
     <div><span class="eyebrow">SCREENINGS4U DOCUMENTATION STUDIO</span><h1>Create detailed how-to guides from real portal workflows.</h1><p>Record clicks with the browser extension, capture screenshots automatically, edit each instruction, and publish a branded guide or PDF.</p></div>
-    <div class="hero-actions"><button id="heroNewGuide" class="btn primary">Create Guide</button><a class="btn secondary" href="#recorder">Recorder Setup</a></div>
+    <div class="hero-actions"><button id="heroRecord" class="btn primary">Start Recording</button><button id="heroNewGuide" class="btn secondary">Create Manually</button></div>
   </section>
   <section class="stats">
     <article><strong id="guideCount">0</strong><span>Total Guides</span></article>
@@ -37,11 +37,40 @@
     </div>
     <div id="guideGrid" class="guide-grid"></div>
   </section>
-  <section id="recorder" class="panel recorder-panel">
-    <div><span class="eyebrow">BROWSER RECORDER</span><h2>Capture a process while you perform it.</h2><p>The recorder is a separate Chrome/Edge extension. It watches approved screenings4u pages externally, so recorder code is never mixed into portal applications.</p></div>
-    <div class="recorder-steps"><span><b>1</b> Load extension</span><span><b>2</b> Start recording</span><span><b>3</b> Complete workflow</span><span><b>4</b> Export and edit</span></div>
+  <section id="recorder" class="panel recorder-panel recorder-console">
+    <div>
+      <span class="eyebrow">WORKFLOW RECORDER</span>
+      <h2>Record a live screenings4u workflow.</h2>
+      <p>Open the portal you want to document in another tab. Start recording here, perform the workflow normally, then return here to finish and edit the captured guide.</p>
+      <div id="recorderConnection" class="recorder-status checking"><span class="status-dot"></span><strong>Checking recorder…</strong><span id="recorderDetail">Connecting to browser recorder</span></div>
+    </div>
+    <div class="recorder-controls">
+      <div id="recorderIdle">
+        <button id="startRecorder" class="btn primary full">Start Recording</button>
+        <p class="recorder-help">The browser extension must be loaded once. After that, recording starts directly from this page.</p>
+      </div>
+      <div id="recorderActive" hidden>
+        <div class="recording-live"><span class="recording-pulse"></span><div><strong>Recording in progress</strong><span id="recordingGuideTitle">Workflow guide</span></div></div>
+        <div class="recording-count"><strong id="recordingStepCount">0</strong><span>steps captured</span></div>
+        <button id="finishRecorder" class="btn primary full">Finish Recording</button>
+        <button id="openRecordedGuide" class="btn secondary full">Open Guide Editor</button>
+      </div>
+    </div>
   </section>
 </main>
+<div id="recorderModal" class="modal" hidden>
+ <div class="modal-card">
+  <div class="modal-head"><div><span class="eyebrow">NEW RECORDING</span><h2>Record workflow</h2></div><button id="closeRecorderModal" class="icon-btn" aria-label="Close">×</button></div>
+  <form id="recorderForm">
+   <label>Guide title<input id="recordTitle" required placeholder="How to create an employer"></label>
+   <label>Portal<select id="recordPortal"><option value="ctpa-dot">C/TPA DOT</option><option value="custom">Other screenings4u portal</option></select></label>
+   <label>Audience<select id="recordAudience"><option>Customer</option><option>Internal staff</option><option>Administrator</option></select></label>
+   <div id="recorderModalMessage" class="inline-message" hidden></div>
+   <p class="modal-note">Before starting, open the screenings4u portal page you want to record in another tab. Guide Builder will switch you to that tab automatically.</p>
+   <div class="form-actions"><button type="button" id="cancelRecorderModal" class="btn secondary">Cancel</button><button id="beginRecording" class="btn primary">Start Recording</button></div>
+  </form>
+ </div>
+</div>
 <div id="modal" class="modal" hidden>
  <div class="modal-card">
   <div class="modal-head"><div><span class="eyebrow">NEW GUIDE</span><h2>Create guide</h2></div><button id="closeModal" class="icon-btn" aria-label="Close">×</button></div>
@@ -53,5 +82,5 @@
   </form>
  </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="assets/js/runtime-config.js?v=1"></script><script src="assets/js/auth-client.js?v=1"></script><script src="assets/js/guard.js?v=1"></script><script src="assets/js/app.js?v=3"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="assets/js/runtime-config.js?v=1"></script><script src="assets/js/auth-client.js?v=1"></script><script src="assets/js/guard.js?v=1"></script><script src="assets/js/app.js?v=4"></script>
 </body></html>
