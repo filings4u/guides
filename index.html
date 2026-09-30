@@ -1,319 +1,57 @@
 <!doctype html>
 <html lang="en">
-
-<head>
-  <meta charset="utf-8">
-
-  <style>
-    :root {
-      --navy: #12385f;
-      --orange: #f36b00;
-      --muted: #64748b;
-      --line: #dbe4ef;
-      --soft: #f4f7fb;
-      --red: #a82418;
-      --green: #0f8a5f;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      width: 360px;
-      margin: 0;
-      font-family: Arial, sans-serif;
-      color: var(--navy);
-      background: var(--soft);
-    }
-
-    .wrap {
-      padding: 18px;
-    }
-
-    .logo {
-      font-size: 20px;
-      font-weight: 900;
-    }
-
-    .sub {
-      margin-top: 3px;
-      margin-bottom: 16px;
-      font-size: 10px;
-      letter-spacing: .12em;
-      color: var(--muted);
-    }
-
-    .card {
-      background: white;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 15px;
-    }
-
-    .row {
-      margin: 10px 0;
-    }
-
-    label {
-      display: block;
-      margin-bottom: 5px;
-      font-size: 11px;
-      font-weight: 800;
-    }
-
-    input,
-    select {
-      width: 100%;
-      padding: 10px;
-      border: 1px solid #cbd5e1;
-      border-radius: 9px;
-      font: inherit;
-    }
-
-    button {
-      width: 100%;
-      margin-top: 8px;
-      padding: 10px 12px;
-      border: 0;
-      border-radius: 9px;
-      font-weight: 800;
-      cursor: pointer;
-    }
-
-    .primary {
-      color: white;
-      background: var(--orange);
-    }
-
-    .secondary {
-      color: var(--navy);
-      background: #eaf0f7;
-    }
-
-    .danger {
-      color: var(--red);
-      background: #fff0ef;
-    }
-
-    .status {
-      margin-top: 10px;
-      padding: 10px;
-      border-radius: 9px;
-      background: #eef4fa;
-      font-size: 12px;
-      line-height: 1.5;
-    }
-
-    .ok {
-      color: var(--green);
-      font-weight: 800;
-    }
-
-    .bad {
-      color: var(--red);
-      font-weight: 800;
-    }
-
-    .account {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      margin-bottom: 10px;
-      font-size: 11px;
-    }
-
-    .account button {
-      width: auto;
-      margin: 0;
-      padding: 6px 8px;
-    }
-  </style>
+<head><script>document.documentElement.classList.add('guard-pending')</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#12385f">
+<meta name="robots" content="noindex,nofollow"><meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate"><meta name="referrer" content="no-referrer">
+<title>screenings4u Guide Builder</title>
+<link rel="icon" href="images/fav.png">
+<link rel="stylesheet" href="assets/css/app.css?v=3">
 </head>
-
 <body>
-
-<div class="wrap">
-
-  <div class="logo">
-    screenings4u
+<header class="topbar">
+  <a class="brand" href="./"><img src="images/logo.png" alt="screenings4u"><span><strong>Guide Builder</strong><small>Documentation Studio</small></span></a>
+  <div class="top-actions">
+    <label class="btn ghost">Import Guide<input id="importFile" type="file" accept=".json,application/json" hidden></label>
+    <a id="membersLink" class="btn ghost" href="members.html" hidden>Members</a><button id="signOut" class="btn ghost">Sign Out</button><button id="newGuide" class="btn primary">Create Guide</button>
   </div>
-
-  <div class="sub">
-    GUIDE RECORDER
-  </div>
-
-  <div class="card">
-
-    <section id="loginView">
-
-      <div class="row">
-
-        <label for="email">
-          Email
-        </label>
-
-        <input
-          id="email"
-          type="email"
-          autocomplete="username"
-        >
-
-      </div>
-
-      <div class="row">
-
-        <label for="password">
-          Password
-        </label>
-
-        <input
-          id="password"
-          type="password"
-          autocomplete="current-password"
-        >
-
-      </div>
-
-      <button
-        id="signIn"
-        class="primary"
-      >
-        Sign In
-      </button>
-
-    </section>
-
-    <section
-      id="recorderView"
-      hidden
-    >
-
-      <div class="account">
-
-        <span id="accountEmail">
-        </span>
-
-        <button
-          id="signOut"
-          class="secondary"
-        >
-          Sign Out
-        </button>
-
-      </div>
-
-      <div id="newGuideView">
-
-        <div class="row">
-
-          <label for="title">
-            Guide title
-          </label>
-
-          <input
-            id="title"
-            placeholder="How to create a DOT program"
-          >
-
-        </div>
-
-        <div class="row">
-
-          <label for="portal">
-            Portal
-          </label>
-
-          <select id="portal">
-
-            <option value="ctpa-dot">
-              C/TPA DOT
-            </option>
-
-            <option value="custom">
-              Other screenings4u portal
-            </option>
-
-          </select>
-
-        </div>
-
-        <button
-          id="start"
-          class="primary"
-        >
-          Start Recording
-        </button>
-
-      </div>
-
-      <div
-        id="activeView"
-        hidden
-      >
-
-        <div class="status">
-
-          <span
-            id="recordingStatus"
-            class="ok"
-          >
-            ● Recording
-          </span>
-
-          <br>
-
-          <span id="count">
-            0 steps saved
-          </span>
-
-          <br>
-
-          <span id="saveStatus">
-            Saved to Guide Builder
-          </span>
-
-        </div>
-
-        <button
-          id="stop"
-          class="secondary"
-        >
-          Finish Recording
-        </button>
-
-        <button
-          id="openGuide"
-          class="primary"
-        >
-          Open Guide Editor
-        </button>
-
-        <button
-          id="clear"
-          class="danger"
-        >
-          Start New Guide
-        </button>
-
-      </div>
-
-    </section>
-
-    <div
-      id="message"
-      class="status"
-      hidden
-    >
+</header>
+<main class="shell">
+  <section class="hero">
+    <div><span class="eyebrow">SCREENINGS4U DOCUMENTATION STUDIO</span><h1>Create detailed how-to guides from real portal workflows.</h1><p>Record clicks with the browser extension, capture screenshots automatically, edit each instruction, and publish a branded guide or PDF.</p></div>
+    <div class="hero-actions"><button id="heroNewGuide" class="btn primary">Create Guide</button><a class="btn secondary" href="#recorder">Recorder Setup</a></div>
+  </section>
+  <section class="stats">
+    <article><strong id="guideCount">0</strong><span>Total Guides</span></article>
+    <article><strong id="draftCount">0</strong><span>Drafts</span></article>
+    <article><strong id="publishedCount">0</strong><span>Published</span></article>
+  </section>
+  <section class="panel">
+    <div class="panel-head">
+      <div><span class="eyebrow">GUIDE LIBRARY</span><h2>Your guides</h2></div>
+      <div class="filters"><input id="search" type="search" placeholder="Search guides"><select id="portalFilter"><option value="">All portals</option></select></div>
     </div>
-
-  </div>
-
+    <div id="emptyLibrary" class="empty">
+      <div class="empty-icon">+</div><h3>No guides yet</h3><p>Create your first guide or import a recording from the extension.</p><button id="emptyNewGuide" class="btn primary">Create Guide</button>
+    </div>
+    <div id="guideGrid" class="guide-grid"></div>
+  </section>
+  <section id="recorder" class="panel recorder-panel">
+    <div><span class="eyebrow">BROWSER RECORDER</span><h2>Capture a process while you perform it.</h2><p>The recorder is a separate Chrome/Edge extension. It watches approved screenings4u pages externally, so recorder code is never mixed into portal applications.</p></div>
+    <div class="recorder-steps"><span><b>1</b> Load extension</span><span><b>2</b> Start recording</span><span><b>3</b> Complete workflow</span><span><b>4</b> Export and edit</span></div>
+  </section>
+</main>
+<div id="modal" class="modal" hidden>
+ <div class="modal-card">
+  <div class="modal-head"><div><span class="eyebrow">NEW GUIDE</span><h2>Create guide</h2></div><button id="closeModal" class="icon-btn" aria-label="Close">×</button></div>
+  <form id="newGuideForm">
+   <label>Guide title<input id="newTitle" required placeholder="How to create a DOT program"></label>
+   <label>Portal<select id="newPortal"><option value="ctpa-dot">C/TPA DOT</option><option value="custom">Other / Custom</option></select></label>
+   <label>Audience<select id="newAudience"><option>Customer</option><option>Internal staff</option><option>Administrator</option></select></label>
+   <div class="form-actions"><button type="button" id="cancelModal" class="btn secondary">Cancel</button><button class="btn primary">Create Guide</button></div>
+  </form>
+ </div>
 </div>
-
-<script src="popup.js"></script>
-
-</body>
-
-</html>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="assets/js/runtime-config.js?v=1"></script><script src="assets/js/auth-client.js?v=1"></script><script src="assets/js/guard.js?v=1"></script><script src="assets/js/app.js?v=3"></script>
+</body></html>
