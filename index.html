@@ -19,7 +19,7 @@
 </header>
 <main class="shell">
   <section class="hero">
-    <div><span class="eyebrow">SCREENINGS4U DOCUMENTATION STUDIO</span><h1>Create detailed how-to guides from real portal workflows.</h1><p>Record clicks with the browser extension, capture screenshots automatically, edit each instruction, and publish a branded guide or PDF.</p></div>
+    <div><span class="eyebrow">SCREENINGS4U DOCUMENTATION STUDIO</span><h1>Create detailed how-to guides from real portal workflows.</h1><p>Share a browser tab, window, or screen and Guide Builder will capture workflow screenshots automatically as the screen changes. Then edit each instruction and publish a branded guide or PDF.</p></div>
     <div class="hero-actions"><button id="heroRecord" class="btn primary">Start Recording</button><button id="heroNewGuide" class="btn secondary">Create Manually</button></div>
   </section>
   <section class="stats">
@@ -33,7 +33,7 @@
       <div class="filters"><input id="search" type="search" placeholder="Search guides"><select id="portalFilter"><option value="">All portals</option></select></div>
     </div>
     <div id="emptyLibrary" class="empty">
-      <div class="empty-icon">+</div><h3>No guides yet</h3><p>Create your first guide or import a recording from the extension.</p><button id="emptyNewGuide" class="btn primary">Create Guide</button>
+      <div class="empty-icon">+</div><h3>No guides yet</h3><p>Create your first guide or record a workflow directly in the browser.</p><button id="emptyNewGuide" class="btn primary">Create Guide</button>
     </div>
     <div id="guideGrid" class="guide-grid"></div>
   </section>
@@ -42,12 +42,12 @@
       <span class="eyebrow">WORKFLOW RECORDER</span>
       <h2>Record a live screenings4u workflow.</h2>
       <p>Open the portal you want to document in another tab. Start recording here, perform the workflow normally, then return here to finish and edit the captured guide.</p>
-      <div id="recorderConnection" class="recorder-status checking"><span class="status-dot"></span><strong>Checking recorder…</strong><span id="recorderDetail">Connecting to browser recorder</span></div>
+      <div id="recorderConnection" class="recorder-status connected"><span class="status-dot"></span><strong>Browser recorder ready</strong><span id="recorderDetail">Ready to share a tab, window, or screen</span></div>
     </div>
     <div class="recorder-controls">
       <div id="recorderIdle">
         <button id="startRecorder" class="btn primary full">Start Recording</button>
-        <p class="recorder-help">The browser extension must be loaded once. After that, recording starts directly from this page.</p>
+        <p class="recorder-help">No extension is required. Your browser will ask which tab, window, or screen you want to share. Keep sharing until the workflow is complete.</p>
       </div>
       <div id="recorderActive" hidden>
         <div class="recording-live"><span class="recording-pulse"></span><div><strong>Recording in progress</strong><span id="recordingGuideTitle">Workflow guide</span></div></div>
