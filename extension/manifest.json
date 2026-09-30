@@ -1,15 +1,37 @@
 {
   "manifest_version": 3,
   "name": "screenings4u Guide Recorder",
-  "version": "1.0.0",
-  "description": "Record screenings4u portal workflows and capture a screenshot for each click.",
-  "permissions": ["activeTab","tabs","storage","scripting","unlimitedStorage"],
-  "host_permissions": ["https://*.screenings4u.com/*"],
-  "background": {"service_worker":"background.js"},
-  "action": {"default_title":"screenings4u Guide Recorder","default_popup":"popup.html"},
-  "content_scripts": [{
-    "matches":["https://*.screenings4u.com/*"],
-    "js":["content.js"],
-    "run_at":"document_start"
-  }]
+  "version": "2.0.0",
+  "description": "Record screenings4u portal workflows and save steps directly to Guide Builder.",
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "storage",
+    "unlimitedStorage"
+  ],
+  "host_permissions": [
+    "https://*.screenings4u.com/*",
+    "https://elpbnytpciqnbexiaebp.supabase.co/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "screenings4u Guide Recorder",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.screenings4u.com/*"
+      ],
+      "exclude_matches": [
+        "https://guides.screenings4u.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
 }
