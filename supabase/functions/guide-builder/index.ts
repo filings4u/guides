@@ -6,15 +6,24 @@ const ANON = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const service = createClient(URL, SERVICE, { auth: { persistSession:false, autoRefreshToken:false } });
 
-const CORS = {
-  "Access-Control-Allow-Origin":"https://guides.screenings4u.com",
-  "Access-Control-Allow-Headers":"authorization,apikey,content-type",
-  "Access-Control-Allow-Methods":"POST,OPTIONS"
-};
+function corsHeaders(req:Request){
+  const origin=(req.headers.get("Origin")||"").trim();
+  const allowed =
+    origin === "https://guides.screenings4u.com" ||
+    origin.startsWith("chrome-extension://") ||
+    origin.startsWith("edge-extension://");
 
-const reply=(body:any,status=200)=>new Response(JSON.stringify(body),{
+  return {
+    "Access-Control-Allow-Origin": allowed ? origin : "https://guides.screenings4u.com",
+    "Access-Control-Allow-Headers":"authorization,apikey,content-type",
+    "Access-Control-Allow-Methods":"POST,OPTIONS",
+    "Vary":"Origin"
+  };
+}
+
+const reply=(req:Request,body:any,status=200)=>new Response(JSON.stringify(body),{
   status,
-  headers:{...CORS,"Content-Type":"application/json","Cache-Control":"no-store"}
+  headers:{...corsHeaders(req),"Content-Type":"application/json","Cache-Control":"no-store"}
 });
 
 async function getUser(req:Request){
@@ -43,12 +52,12 @@ async function signedUrl(path:string|null|undefined){
 }
 
 Deno.serve(async(req)=>{
-  if(req.method==="OPTIONS")return new Response("ok",{headers:CORS});
-  if(req.method!=="POST")return reply({error:"Method not allowed."},405);
+  if(req.method==="OPTIONS")return new Response("ok",{headers:corsHeaders(req)});
+  if(req.method!=="POST")return reply(req,{error:"Method not allowed."},405);
 
   try{
     const user=await getUser(req);
-    if(!user)return reply({error:"Authentication required."},401);
+    if(!user)return reply(req,{error:"Authentication required."},401);
 
     const body=await req.json().catch(()=>({}));
     const action=String(body.action||"status");
@@ -61,16 +70,16 @@ Deno.serve(async(req)=>{
         const {error:insertError}=await service.from("guide_builder_members").insert({user_id:user.id,role:"admin",active:true});
         if(insertError)throw insertError;
         member=await getMember(user.id);
-        return reply({ok:true,member,bootstrap_result:"admin_created"});
+        return reply(req,{ok:true,member,bootstrap_result:"admin_created"});
       }
-      if(!member?.active)return reply({error:"Guide Builder access has not been granted to this login."},403);
-      return reply({ok:true,member,bootstrap_result:"member_exists"});
+      if(!member?.active)return reply(req,{error:"Guide Builder access has not been granted to this login."},403);
+      return reply(req,{ok:true,member,bootstrap_result:"member_exists"});
     }
 
     const member=await getMember(user.id);
-    if(!member?.active)return reply({error:"Guide Builder access has not been granted to this login."},403);
+    if(!member?.active)return reply(req,{error:"Guide Builder access has not been granted to this login."},403);
 
-    if(action==="status")return reply({ok:true,member});
+    if(action==="status")return reply(req,{ok:true,member});
 
     if(action==="list_guides"){
       const {data,error}=await service
@@ -83,44 +92,44 @@ Deno.serve(async(req)=>{
         const steps=[...(g.guide_builder_steps||[])].sort((a:any,b:any)=>a.step_number-b.step_number);
         guides.push({...g,steps});
       }
-      return reply({ok:true,guides,member});
+      return reply(req,{ok:true,guides,member});
     }
 
     if(action==="get_guide"){
       const id=String(body.id||"");
-      if(!id)return reply({error:"Guide id is required."},400);
+      if(!id)return reply(req,{error:"Guide id is required."},400);
       const {data,error}=await service
         .from("guide_builder_guides")
         .select("*,guide_builder_steps(*)")
         .eq("id",id)
         .maybeSingle();
       if(error)throw error;
-      if(!data)return reply({error:"Guide not found."},404);
+      if(!data)return reply(req,{error:"Guide not found."},404);
       const steps=[...(data.guide_builder_steps||[])].sort((a:any,b:any)=>a.step_number-b.step_number);
       for(const step of steps){
         step.screenshot_url=await signedUrl(step.screenshot_path);
       }
-      return reply({ok:true,guide:{...data,steps},member});
+      return reply(req,{ok:true,guide:{...data,steps},member});
     }
 
     if(action==="upload_screenshot"){
-      if(!["admin","editor"].includes(member.role))return reply({error:"Editor access is required."},403);
+      if(!["admin","editor"].includes(member.role))return reply(req,{error:"Editor access is required."},403);
       const guideId=String(body.guide_id||"");
       const stepId=String(body.step_id||crypto.randomUUID());
       const dataUrl=String(body.data_url||"");
       const match=dataUrl.match(/^data:(image\/(?:png|jpeg|webp));base64,(.+)$/);
-      if(!guideId||!match)return reply({error:"A valid screenshot is required."},400);
+      if(!guideId||!match)return reply(req,{error:"A valid screenshot is required."},400);
       const bytes=Uint8Array.from(atob(match[2]),c=>c.charCodeAt(0));
-      if(bytes.byteLength>10485760)return reply({error:"Screenshot exceeds the 10 MB limit."},413);
+      if(bytes.byteLength>10485760)return reply(req,{error:"Screenshot exceeds the 10 MB limit."},413);
       const ext=match[1]==="image/jpeg"?"jpg":match[1].split("/")[1];
       const path=`screenshots/${guideId}/${stepId}-${Date.now()}.${ext}`;
       const {error}=await service.storage.from("guide-builder").upload(path,bytes,{contentType:match[1],upsert:false});
       if(error)throw error;
-      return reply({ok:true,path,url:await signedUrl(path)});
+      return reply(req,{ok:true,path,url:await signedUrl(path)});
     }
 
     if(action==="save_guide"){
-      if(!["admin","editor"].includes(member.role))return reply({error:"Editor access is required."},403);
+      if(!["admin","editor"].includes(member.role))return reply(req,{error:"Editor access is required."},403);
       const g=body.guide||{};
       const id=String(g.id||crypto.randomUUID());
       const now=new Date().toISOString();
@@ -202,13 +211,13 @@ Deno.serve(async(req)=>{
         (step as any).screenshot_url=await signedUrl(step.screenshot_path);
       }
 
-      return reply({ok:true,guide:{...saved,steps},member});
+      return reply(req,{ok:true,guide:{...saved,steps},member});
     }
 
     if(action==="delete_guide"){
-      if(!["admin","editor"].includes(member.role))return reply({error:"Editor access is required."},403);
+      if(!["admin","editor"].includes(member.role))return reply(req,{error:"Editor access is required."},403);
       const id=String(body.id||"");
-      if(!id)return reply({error:"Guide id is required."},400);
+      if(!id)return reply(req,{error:"Guide id is required."},400);
 
       const {data:steps}=await service
         .from("guide_builder_steps")
@@ -220,11 +229,11 @@ Deno.serve(async(req)=>{
 
       const {error}=await service.from("guide_builder_guides").delete().eq("id",id);
       if(error)throw error;
-      return reply({ok:true});
+      return reply(req,{ok:true});
     }
 
     if(action==="list_members"){
-      if(member.role!=="admin")return reply({error:"Administrator access is required."},403);
+      if(member.role!=="admin")return reply(req,{error:"Administrator access is required."},403);
       const {data,error}=await service.from("guide_builder_members")
         .select("user_id,role,active,created_at,updated_at")
         .order("created_at");
@@ -234,14 +243,14 @@ Deno.serve(async(req)=>{
         const {data:u}=await service.auth.admin.getUserById(row.user_id);
         members.push({...row,email:u.user?.email||null});
       }
-      return reply({ok:true,members});
+      return reply(req,{ok:true,members});
     }
 
     if(action==="add_member"){
-      if(member.role!=="admin")return reply({error:"Administrator access is required."},403);
+      if(member.role!=="admin")return reply(req,{error:"Administrator access is required."},403);
       const email=String(body.email||"").trim().toLowerCase();
       const role=["admin","editor","viewer"].includes(String(body.role))?String(body.role):"editor";
-      if(!email)return reply({error:"Email is required."},400);
+      if(!email)return reply(req,{error:"Email is required."},400);
 
       let page=1,target:any=null;
       while(page<=10&&!target){
@@ -251,27 +260,27 @@ Deno.serve(async(req)=>{
         if(data.users.length<100)break;
         page++;
       }
-      if(!target)return reply({error:"That email does not have a Supabase login yet."},404);
+      if(!target)return reply(req,{error:"That email does not have a Supabase login yet."},404);
 
       const {error}=await service.from("guide_builder_members").upsert({
         user_id:target.id,role,active:true,updated_at:new Date().toISOString()
       });
       if(error)throw error;
-      return reply({ok:true});
+      return reply(req,{ok:true});
     }
 
     if(action==="remove_member"){
-      if(member.role!=="admin")return reply({error:"Administrator access is required."},403);
+      if(member.role!=="admin")return reply(req,{error:"Administrator access is required."},403);
       const targetId=String(body.user_id||"");
-      if(targetId===user.id)return reply({error:"You cannot remove your own administrator access."},409);
+      if(targetId===user.id)return reply(req,{error:"You cannot remove your own administrator access."},409);
       const {error}=await service.from("guide_builder_members").delete().eq("user_id",targetId);
       if(error)throw error;
-      return reply({ok:true});
+      return reply(req,{ok:true});
     }
 
-    return reply({error:"Unknown action."},400);
+    return reply(req,{error:"Unknown action."},400);
   }catch(error){
     console.error("guide-builder",error);
-    return reply({error:error instanceof Error?error.message:String(error)},500);
+    return reply(req,{error:error instanceof Error?error.message:String(error)},500);
   }
 });
