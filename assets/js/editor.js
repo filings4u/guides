@@ -1,7 +1,7 @@
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const params=new URLSearchParams(location.search),guideId=params.get('id');
-let guide=null,saveTimer=null,saving=false;
+let guide=null,saveTimer=null,saving=false,portalRegistry=[];
 
 function markerStyle(step){
  const x=Number(step.click_x??50),y=Number(step.click_y??50);
@@ -10,7 +10,8 @@ function markerStyle(step){
 function normalized(){
  return {
    ...guide,
-   portal_code:$('#guidePortal').value.trim()||'ctpa-dot',
+   portal_code:$('#guidePortal').value.trim()||'nondot_employer',
+   category:$('#guideCategory').value||'Support',
    title:$('#guideTitle').value.trim()||'Untitled Guide',
    audience:$('#guideAudience').value.trim()||'Customer',
    status:$('#guideStatus').value,
@@ -31,7 +32,8 @@ function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>save(fa
 function render(){
  if(!guide)return;
  $('#guideTitle').value=guide.title||'';
- $('#guidePortal').value=guide.portal_code||'ctpa-dot';
+ $('#guidePortal').value=guide.portal_code||'nondot_employer';
+ $('#guideCategory').value=guide.category||'Support';
  $('#guideAudience').value=guide.audience||'Customer';
  $('#guideStatus').value=guide.status||'draft';
  $('#guideIntro').value=guide.intro||'';
@@ -46,12 +48,13 @@ function render(){
 }
 async function load(){
  await S4UGuard.init();
+ try{const r=await fetch(S4UGuidesConfig.supabaseUrl+'/functions/v1/guide-catalog-public',{method:'POST',headers:{'Content-Type':'application/json','apikey':S4UGuidesConfig.supabasePublishableKey},body:JSON.stringify({action:'portals'})});const j=await r.json();portalRegistry=j.portals||[];$('#guidePortal').innerHTML=portalRegistry.map(p=>`<option value="${esc(p.portal_code)}">${esc(p.name)} — ${esc(p.hostname||p.portal_code)}</option>`).join('')}catch{}
  if(!guideId){location.replace('./');return}
  const r=await S4UGuides.api({action:'get_guide',id:guideId});
  guide=r.guide;
  render();
 }
-['guideTitle','guidePortal','guideAudience','guideIntro'].forEach(k=>$('#'+k).addEventListener('input',e=>{if(k==='guideTitle')$('#editorHeading').textContent=e.target.value;scheduleSave()}));
+['guideTitle','guidePortal','guideCategory','guideAudience','guideIntro'].forEach(k=>$('#'+k).addEventListener('input',e=>{if(k==='guideTitle')$('#editorHeading').textContent=e.target.value;scheduleSave()}));
 $('#guideStatus').addEventListener('change',()=>save(true).catch(e=>S4UDialog.alert(e.message||'Could not save status.','Save failed')));
 $('#steps').addEventListener('input',e=>{const card=e.target.closest('.step-card');if(!card||!guide)return;const i=+card.dataset.i,field=e.target.dataset.field;if(field){guide.steps[i][field]=e.target.value;scheduleSave()}});
 $('#steps').addEventListener('click',e=>{const btn=e.target.closest('button');if(!btn||!guide)return;const card=btn.closest('.step-card'),i=+card.dataset.i,a=btn.dataset.action;if(a==='delete')guide.steps.splice(i,1);if(a==='up'&&i>0)[guide.steps[i-1],guide.steps[i]]=[guide.steps[i],guide.steps[i-1]];if(a==='down'&&i<guide.steps.length-1)[guide.steps[i+1],guide.steps[i]]=[guide.steps[i],guide.steps[i+1]];render();scheduleSave()});

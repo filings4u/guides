@@ -1,7 +1,9 @@
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const uid=()=>crypto.randomUUID();
-let guides=[],member=null;
+let guides=[],member=null,portalRegistry=[];
+const portalLabel=code=>portalRegistry.find(p=>p.portal_code===code)?.name||String(code||'portal').replaceAll('_',' ').replaceAll('-',' ');
+async function loadPortalRegistry(){try{const r=await fetch(S4UGuidesConfig.supabaseUrl+'/functions/v1/guide-catalog-public',{method:'POST',headers:{'Content-Type':'application/json','apikey':S4UGuidesConfig.supabasePublishableKey},body:JSON.stringify({action:'portals'})});const j=await r.json();portalRegistry=j.portals||[];const opts=portalRegistry.map(p=>'<option value="'+esc(p.portal_code)+'">'+esc(p.name)+' — '+esc(p.hostname||'')+'</option>').join('');['#newPortal','#recordPortal'].forEach(sel=>{const el=$(sel);if(el)el.innerHTML=opts});return portalRegistry}catch{return []}}
 
 function normalizeStep(s,i){
  const vp=s.click?.viewport||{};
@@ -31,10 +33,10 @@ function render(){
  $('#draftCount').textContent=guides.filter(g=>g.status!=='published').length;
  $('#publishedCount').textContent=guides.filter(g=>g.status==='published').length;
  const portals=[...new Set(guides.map(g=>g.portal_code).filter(Boolean))].sort(),current=portal;
- $('#portalFilter').innerHTML='<option value="">All portals</option>'+portals.map(p=>'<option '+(p===current?'selected':'')+' value="'+esc(p)+'">'+esc(p.replaceAll('-',' '))+'</option>').join('');
+ $('#portalFilter').innerHTML='<option value="">All portals</option>'+portals.map(p=>'<option '+(p===current?'selected':'')+' value="'+esc(p)+'">'+esc(portalLabel(p))+'</option>').join('');
  $('#emptyLibrary').hidden=guides.length>0;
  $('#guideGrid').innerHTML=filtered.map(g=>`<article class="guide-card">
-   <div class="guide-card-top"><span class="status ${g.status==='published'?'published':'draft'}">${esc(g.status||'draft')}</span><span class="portal-pill">${esc((g.portal_code||'portal').replaceAll('-',' '))}</span></div>
+   <div class="guide-card-top"><span class="status ${g.status==='published'?'published':'draft'}">${esc(g.status||'draft')}</span><span class="portal-pill">${esc(portalLabel(g.portal_code))}</span></div>
    <h3>${esc(g.title||'Untitled Guide')}</h3>
    <p>${esc(g.intro||'No description yet.')}</p>
    <div class="guide-meta"><span>${g.steps?.length||0} steps</span><span>${esc(g.audience||'Customer')}</span><span>v${Number(g.version||1)}</span></div>
@@ -44,6 +46,7 @@ function render(){
 
 async function load(){
  member=await S4UGuard.init();
+ await loadPortalRegistry();
  if(member?.role==='admin')$('#membersLink').hidden=false;
  const r=await S4UGuides.api({action:'list_guides'});
  guides=r.guides||[];
@@ -55,7 +58,7 @@ function closeModal(){$('#modal').hidden=true;$('#newGuideForm').reset()}
 
 async function createGuide(e){
  e.preventDefault();
- const guide={id:uid(),title:$('#newTitle').value.trim(),portal_code:$('#newPortal').value,audience:$('#newAudience').value,status:'draft',intro:'',steps:[]};
+ const guide={id:uid(),title:$('#newTitle').value.trim(),portal_code:$('#newPortal').value||'nondot_employer',category:$('#newCategory').value||'Support',audience:$('#newAudience').value,status:'draft',intro:'',steps:[]};
  const r=await S4UGuides.api({action:'save_guide',guide});
  location.href='editor.html?id='+encodeURIComponent(r.guide.id);
 }
@@ -64,7 +67,7 @@ async function importGuide(file){
  const raw=JSON.parse(await file.text());
  const source=Array.isArray(raw)?raw:[raw];
  for(const item of source){
-   const guide={id:uid(),title:item.title||'Imported Guide',portal_code:item.portal_code||item.portal||'ctpa-dot',audience:item.audience||'Customer',status:'draft',intro:item.intro||'',steps:(item.steps||[]).map(normalizeStep)};
+   const guide={id:uid(),title:item.title||'Imported Guide',portal_code:item.portal_code||item.portal||'nondot_employer',audience:item.audience||'Customer',status:'draft',intro:item.intro||'',steps:(item.steps||[]).map(normalizeStep)};
    for(const step of guide.steps){
      if(step.screenshot&&step.screenshot.startsWith('data:image/')){
        const up=await S4UGuides.api({action:'upload_screenshot',guide_id:guide.id,step_id:step.id,data_url:step.screenshot});

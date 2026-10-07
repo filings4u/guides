@@ -7,7 +7,7 @@
 <meta name="robots" content="noindex,nofollow"><meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate"><meta name="referrer" content="no-referrer">
 <title>screenings4u Guide Builder</title>
 
-<link rel="stylesheet" href="assets/css/app.css?v=5">
+<link rel="stylesheet" href="assets/css/app.css?v=6">
 </head>
 <body>
 <header class="topbar">
@@ -63,7 +63,7 @@
   <div class="modal-head"><div><span class="eyebrow">NEW RECORDING</span><h2>Record workflow</h2></div><button id="closeRecorderModal" class="icon-btn" aria-label="Close">×</button></div>
   <form id="recorderForm">
    <label>Guide title<input id="recordTitle" required placeholder="How to create an employer"></label>
-   <label>Portal<select id="recordPortal"><option value="ctpa-dot">C/TPA DOT</option><option value="custom">Other screenings4u portal</option></select></label>
+   <label>Portal<select id="recordPortal"><option value="">Loading portals…</option></select></label>
    <label>Audience<select id="recordAudience"><option>Customer</option><option>Internal staff</option><option>Administrator</option></select></label>
    <div id="recorderModalMessage" class="inline-message" hidden></div>
    <p class="modal-note">Before starting, open the screenings4u portal page you want to record in another tab. Guide Builder will switch you to that tab automatically.</p>
@@ -76,11 +76,11 @@
   <div class="modal-head"><div><span class="eyebrow">NEW GUIDE</span><h2>Create guide</h2></div><button id="closeModal" class="icon-btn" aria-label="Close">×</button></div>
   <form id="newGuideForm">
    <label>Guide title<input id="newTitle" required placeholder="How to create a DOT program"></label>
-   <label>Portal<select id="newPortal"><option value="ctpa-dot">C/TPA DOT</option><option value="custom">Other / Custom</option></select></label>
+   <label>Portal<select id="newPortal"><option value="">Loading portals…</option></select></label><label>Category<select id="newCategory"><option>Company Setup</option><option>People</option><option>Programs</option><option>Testing</option><option>Results</option><option>Documents</option><option>Billing</option><option>Support</option></select></label>
    <label>Audience<select id="newAudience"><option>Customer</option><option>Internal staff</option><option>Administrator</option></select></label>
    <div class="form-actions"><button type="button" id="cancelModal" class="btn secondary">Cancel</button><button class="btn primary">Create Guide</button></div>
   </form>
  </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="assets/js/runtime-config.js?v=1"></script><script src="assets/js/dialogs.js?v=5"></script><script src="assets/js/auth-client.js?v=5"></script><script src="assets/js/guard.js?v=5"></script><script src="assets/js/app.js?v=5"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="assets/js/runtime-config.js?v=1"></script><script src="assets/js/dialogs.js?v=6"></script><script src="assets/js/auth-client.js?v=6"></script><script src="assets/js/guard.js?v=6"></script><script src="assets/js/app.js?v=6"></script>
 </body></html>
