@@ -79,11 +79,43 @@ async function importGuide(file){
 
 ['#newGuide','#heroNewGuide','#emptyNewGuide'].forEach(s=>$(s).onclick=openModal);
 $('#closeModal').onclick=$('#cancelModal').onclick=closeModal;
-$('#newGuideForm').onsubmit=e=>createGuide(e).catch(err=>alert(err.message));
+$('#newGuideForm').onsubmit=e=>createGuide(e).catch(err=>S4UDialog.alert(err.message||'Could not create guide.','Create guide'));
 $('#search').oninput=render;$('#portalFilter').onchange=render;
 $('#signOut').onclick=async()=>{if(captureStream){for(const t of captureStream.getTracks())t.stop()}await S4UGuides.signOut()};
-$('#importFile').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;try{await importGuide(f)}catch(err){alert(err.message||'Could not import guide.')}finally{e.target.value=''}};
-load().catch(err=>{if(err.status!==401)alert(err.message||'Could not load Guide Builder.')});
+$('#importFile').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;try{await importGuide(f)}catch(err){await S4UDialog.alert(err.message||'Could not import guide.','Import failed')}finally{e.target.value=''}};
+load().catch(async err=>{if(err.status!==401&&err.status!==403)await S4UDialog.alert(err.message||'Could not load Guide Builder.','Guide Builder')});
+// ---- Recorder extension bridge (preferred) ----
+let extensionReady=false,extensionMode=false,extensionPoll=null;
+const bridgePending=new Map();
+window.addEventListener('message',event=>{
+ if(event.source!==window||event.origin!==location.origin)return;
+ if(event.data?.source==='S4U_GUIDE_RECORDER_READY'){
+  extensionReady=true;
+  setRecorderReady('Click-perfect recorder extension connected');
+ }
+ if(event.data?.source==='S4U_GUIDE_RECORDER'&&event.data?.id){
+  const p=bridgePending.get(event.data.id);if(p){bridgePending.delete(event.data.id);p.resolve(event.data.response)}
+ }
+});
+function recorderBridge(type,payload={},timeout=5000){
+ const id=uid();
+ return new Promise((resolve,reject)=>{
+  const timer=setTimeout(()=>{bridgePending.delete(id);reject(new Error('Recorder extension did not respond.'))},timeout);
+  bridgePending.set(id,{resolve:r=>{clearTimeout(timer);resolve(r)}});
+  window.postMessage({source:'S4U_GUIDE_BUILDER',id,type,payload},location.origin);
+ });
+}
+async function syncExtensionAuth(){
+ const s=await S4UGuides.requireAuth();
+ return recorderBridge('AUTH_FROM_SITE',{access_token:s.access_token,refresh_token:s.refresh_token,expires_at:s.expires_at,user:{id:s.user?.id,email:s.user?.email}},7000);
+}
+async function pollExtensionState(){
+ try{
+  const r=await recorderBridge('GET_STATE',{},3000),state=r?.state||null;
+  if(state){renderRecorderState(state);if(!state.recording&&extensionMode){clearInterval(extensionPoll);extensionPoll=null}}
+ }catch{}
+}
+
 // ---- Native browser workflow recorder ----
 let recorderState=null;
 let captureStream=null;
@@ -141,12 +173,12 @@ function thumbDifference(a,b){
 }
 
 async function captureChangedFrame(force=false){
- if(captureBusy||!captureVideo||captureVideo.readyState<2||recordedFrames.length>=60)return;
+ if(captureBusy||!captureVideo||captureVideo.readyState<2||recordedFrames.length>=250)return;
  captureBusy=true;
  try{
   const thumb=thumbFingerprint(captureVideo);
   const diff=thumbDifference(lastThumb,thumb);
-  if(force||!lastThumb||diff>.055){
+  if(force||!lastThumb||diff>.025){
    const dataUrl=canvasData(captureVideo);
    if(dataUrl){
     recordedFrames.push({id:uid(),screenshot:dataUrl,captured_at:new Date().toISOString()});
@@ -157,7 +189,7 @@ async function captureChangedFrame(force=false){
  }finally{captureBusy=false}
 }
 
-async function beginRecording(e){
+async function nativeBeginRecording(e){
  e.preventDefault();
  const msg=$('#recorderModalMessage'),btn=$('#beginRecording');
  msg.hidden=true;btn.disabled=true;btn.textContent='Choose screen…';
@@ -170,11 +202,11 @@ async function beginRecording(e){
   recordedFrames=[];lastThumb=null;
   closeRecorderModal();
   renderRecorderState({recording:true,guide:activeGuide,steps:recordedFrames});
-  setRecorderReady('Recording shared screen changes automatically');
+  setRecorderReady('Fallback screen-share recorder active. For click-perfect capture, use the screenings4u Guide Recorder extension.');
   await captureChangedFrame(true);
-  captureTimer=setInterval(()=>captureChangedFrame(false),1200);
+  captureTimer=setInterval(()=>captureChangedFrame(false),450);
   const track=captureStream.getVideoTracks()[0];
-  track.addEventListener('ended',()=>{ if(recorderState?.recording) finishRecording(false).catch(err=>alert(err.message||'Could not finish recording.')); },{once:true});
+  track.addEventListener('ended',()=>{ if(recorderState?.recording) finishRecording(false).catch(err=>S4UDialog.alert(err.message||'Could not finish recording.','Recording error')); },{once:true});
  }catch(err){
   if(err?.name==='NotAllowedError') msg.textContent='Screen sharing was cancelled. Click Start Recording and choose the tab/window you want to capture.';
   else msg.textContent=err.message||'Could not start screen recording.';
@@ -182,7 +214,28 @@ async function beginRecording(e){
  }finally{btn.disabled=false;btn.textContent='Start Recording'}
 }
 
+
+async function beginRecording(e){
+ e.preventDefault();
+ const msg=$('#recorderModalMessage'),btn=$('#beginRecording');msg.hidden=true;btn.disabled=true;btn.textContent='Starting…';
+ try{
+  if(extensionReady){
+   const auth=await syncExtensionAuth();if(!auth?.ok)throw new Error(auth?.error||'Recorder extension authentication failed.');
+   const r=await recorderBridge('START_RECORDING_FROM_SITE',{title:$('#recordTitle').value.trim()||'Recorded Workflow',portal:$('#recordPortal').value,audience:$('#recordAudience').value},10000);
+   if(!r?.ok)throw new Error(r?.error||'Could not start the recorder extension.');
+   extensionMode=true;closeRecorderModal();renderRecorderState(r.state);setRecorderReady('Recording actual portal clicks with the screenings4u Guide Recorder');
+   if(extensionPoll)clearInterval(extensionPoll);extensionPoll=setInterval(pollExtensionState,700);await pollExtensionState();return;
+  }
+  await nativeBeginRecording(e);
+ }catch(err){msg.textContent=err?.message||'Could not start recording.';msg.hidden=false}
+ finally{btn.disabled=false;btn.textContent='Start Recording'}
+}
+
 async function finishRecording(redirect=true){
+ if(extensionMode){
+  const btn=$('#finishRecorder');if(btn){btn.disabled=true;btn.textContent='Saving…'}
+  try{const r=await recorderBridge('STOP_RECORDING',{},15000);if(!r?.ok)throw new Error(r?.error||'Could not finish recording.');extensionMode=false;if(extensionPoll){clearInterval(extensionPoll);extensionPoll=null}renderRecorderState(r.state);const id=r.guide_id||r.state?.guide?.id;if(redirect&&id)location.href='editor.html?id='+encodeURIComponent(id);return}finally{if(btn){btn.disabled=false;btn.textContent='Finish Recording'}}
+ }
  if(!activeGuide)return;
  const btn=$('#finishRecorder');if(btn){btn.disabled=true;btn.textContent='Saving…'}
  try{
@@ -214,7 +267,7 @@ function openRecordedGuide(){
 ['#startRecorder','#startRecorderTop','#heroRecord'].forEach(sel=>{const el=$(sel);if(el)el.onclick=openRecorderModal});
 $('#closeRecorderModal').onclick=$('#cancelRecorderModal').onclick=closeRecorderModal;
 $('#recorderForm').onsubmit=e=>beginRecording(e);
-$('#finishRecorder').onclick=()=>finishRecording(true).catch(err=>alert(err.message||'Could not finish recording.'));
+$('#finishRecorder').onclick=()=>finishRecording(true).catch(err=>S4UDialog.alert(err.message||'Could not finish recording.','Recording error'));
 $('#openRecordedGuide').onclick=openRecordedGuide;
 setRecorderReady();
 renderRecorderState(null);

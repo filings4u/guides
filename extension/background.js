@@ -4,6 +4,7 @@ const GUIDE_API = SUPABASE_URL + "/functions/v1/guide-builder";
 
 const STATE_KEY = "s4u_guide_recorder_state_v2";
 const AUTH_KEY = "s4u_guide_recorder_auth_v1";
+let recordQueue = Promise.resolve();
 
 async function getState() {
   const data = await chrome.storage.local.get(STATE_KEY);
@@ -410,76 +411,61 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     if (message?.type === "RECORD_CLICK") {
-      const state = await getState();
-
-      if (!state.recording || !state.guide?.id || !sender.tab?.id) {
+      const current = await getState();
+      if (!current.recording || !current.guide?.id || !sender.tab?.id) {
         sendResponse({ ok: false, ignored: true });
         return;
       }
 
+      // Capture the visible tab immediately, before uploads/API calls can delay
+      // the next click. Persistence is queued separately so rapid clicks are not lost.
       let screenshot;
-
       try {
-        screenshot = await chrome.tabs.captureVisibleTab(
-          sender.tab.windowId,
-          { format: "jpeg", quality: 90 }
-        );
+        screenshot = await chrome.tabs.captureVisibleTab(sender.tab.windowId, { format: "jpeg", quality: 92 });
       } catch (error) {
-        state.last_error =
-          "Screenshot capture failed: " +
-          (error?.message || String(error));
+        const state = await getState();
+        state.last_error = "Screenshot capture failed: " + (error?.message || String(error));
         await setState(state);
         sendResponse({ ok: false, error: state.last_error });
         return;
       }
 
-      const stepId = crypto.randomUUID();
-
-      const upload = await guideApi({
-        action: "upload_screenshot",
-        guide_id: state.guide.id,
-        step_id: stepId,
-        data_url: screenshot
-      });
-
-      const label =
-        message.element?.label ||
-        "the highlighted control";
-
-      state.steps.push({
-        id: stepId,
-        title:
-          message.title ||
-          ("Step " + (state.steps.length + 1)),
-        instruction:
-          message.instruction ||
-          ("Select " + label + "."),
-        url:
-          message.url ||
-          sender.tab.url ||
-          "",
-        page_title:
-          message.page_title ||
-          sender.tab.title ||
-          "",
+      const captured = {
+        screenshot,
+        url: message.url || sender.tab.url || "",
+        page_title: message.page_title || sender.tab.title || "",
         element: message.element || {},
-        click: message.click || {
-          x_pct: 50,
-          y_pct: 50
-        },
-        screenshot_path: upload.path,
-        screenshot_url: upload.url || null,
+        click: message.click || { x_pct: 50, y_pct: 50 },
+        title: message.title || null,
+        instruction: message.instruction || null,
         captured_at: new Date().toISOString()
-      });
+      };
 
-      await setState(state);
-      await saveGuide(state);
-
-      sendResponse({
-        ok: true,
-        count: state.steps.length,
-        guide_id: state.guide.id
+      const task = recordQueue.then(async () => {
+        const state = await getState();
+        if (!state.recording || !state.guide?.id) return { ok:false, ignored:true };
+        const stepId = crypto.randomUUID();
+        const upload = await guideApi({ action:"upload_screenshot", guide_id:state.guide.id, step_id:stepId, data_url:captured.screenshot });
+        const label = captured.element?.label || "the highlighted control";
+        state.steps.push({
+          id: stepId,
+          title: captured.title || ("Step " + (state.steps.length + 1)),
+          instruction: captured.instruction || ("Select " + label + "."),
+          url: captured.url,
+          page_title: captured.page_title,
+          element: captured.element,
+          click: captured.click,
+          screenshot_path: upload.path,
+          screenshot_url: upload.url || null,
+          captured_at: captured.captured_at
+        });
+        await setState(state);
+        await saveGuide(state);
+        return { ok:true, count:state.steps.length, guide_id:state.guide.id };
       });
+      recordQueue = task.catch(() => {});
+      try { sendResponse(await task); }
+      catch (error) { sendResponse({ ok:false, error:error?.message || String(error) }); }
       return;
     }
 

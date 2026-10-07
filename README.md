@@ -6,7 +6,7 @@ A standalone screenings4u documentation tool for recording portal workflows, tur
 
 ## Product boundaries
 
-Guide Builder is separate from every screenings4u portal. The browser extension observes approved portal pages externally; no recorder code is mixed into portal application code.
+Guide Builder is separate from every screenings4u portal. Recording is performed by the Guide Builder website using the browser Screen Capture API; no recorder code is mixed into portal application code.
 
 ## Included in the initial build
 
@@ -33,13 +33,26 @@ Guide Builder is separate from every screenings4u portal. The browser extension 
 - Guide health checks when portal UI changes
 
 
-## Recorder flow (v2.3)
+## Recorder
 
-1. Load the `extension/` directory as an unpacked Chrome/Edge extension.
-2. Sign in to `https://guides.screenings4u.com/`. The website passes the current Guide Builder session to the recorder securely through the extension content-script bridge.
-3. Open the screenings4u portal page you want to document in another tab.
-4. Click **Start Recording** on the Guide Builder website, enter the guide details, and begin. The extension selects the most recently used screenings4u portal tab and focuses it.
-5. Each interaction is captured on pointer-down before the portal action changes the page. The screenshot, click position, URL, page title, and element metadata are uploaded to the existing `guide-builder` API and saved as guide steps.
-6. Return to Guide Builder and click **Finish Recording**. The completed draft opens in the editor.
+The Guide Builder now records directly in the browser using the Screen Capture API. No browser extension is required.
 
-If Guide Builder says **Recorder not connected**, reload the unpacked extension after updating its files and refresh the Guide Builder page.
+1. Sign in to `https://guides.screenings4u.com/`.
+2. Click **Start Recording**.
+3. Enter the guide title, portal, and audience.
+4. Choose the browser tab, window, or screen to share.
+5. Perform the workflow. Guide Builder automatically captures a new screenshot step when the shared screen changes significantly.
+6. Return to Guide Builder and click **Finish Recording** (or stop sharing).
+7. The screenshots are uploaded to the private `guide-builder` storage bucket and the guide opens in the editor.
+
+Because normal websites are not permitted to inspect clicks inside a different tab, native recording captures visual workflow changes rather than cross-tab click events. Click markers can be adjusted in the editor.
+
+
+## 2026-10-07 reliability update
+- Browser authentication refreshes and retries once after a 401.
+- guide-builder validates bearer tokens and Guide Builder membership inside the function.
+- Native alert/confirm dialogs were replaced by branded screenings4u dialogs.
+- Site headers/auth/PDF viewer use images/logo.png and images/logo2.png.
+- Guide Recorder extension v3 captures actual clicks, select changes, checkbox/radio changes, and Enter-submit actions.
+- Rapid captures are queued so upload latency does not drop later clicks.
+- Browser screen sharing remains available as a fallback with faster frame sampling and a higher capture limit.
