@@ -4,7 +4,8 @@ const params=new URLSearchParams(location.search),guideId=params.get('id');
 let guide=null,saveTimer=null,saving=false,portalRegistry=[];
 
 function markerStyle(step){
- const x=Number(step.click_x??50),y=Number(step.click_y??50);
+ const hasMarker=step.click_x!=null&&step.click_y!=null&&step.metadata?.capture_mode!=='native_screen_share'&&step.metadata?.marker_baked!==true;
+ const x=Number(step.click_x??0),y=Number(step.click_y??0);
  return `left:${Math.max(0,Math.min(100,x))}%;top:${Math.max(0,Math.min(100,y))}%`;
 }
 function normalized(){

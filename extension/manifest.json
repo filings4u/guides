@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "screenings4u Guide Recorder",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Record screenings4u portal workflows click-by-click and save complete screenshots directly to Guide Builder.",
   "permissions": [
     "activeTab",
@@ -33,5 +33,6 @@
       ],
       "run_at": "document_start"
     }
-  ]
+  ],
+  "version_name": "3.1 Click-Perfect"
 }

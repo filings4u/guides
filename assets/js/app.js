@@ -229,6 +229,7 @@ async function beginRecording(e){
    extensionMode=true;closeRecorderModal();renderRecorderState(r.state);setRecorderReady('Recording actual portal clicks with the screenings4u Guide Recorder');
    if(extensionPoll)clearInterval(extensionPoll);extensionPoll=setInterval(pollExtensionState,700);await pollExtensionState();return;
   }
+  await S4UDialog.alert('The click-perfect recorder extension is not connected. Screen-share mode can capture page images, but it cannot know which controls you clicked and will not add click numbers. Connect/reload the screenings4u Guide Recorder extension for numbered click guides.','Click recorder required');
   await nativeBeginRecording(e);
  }catch(err){msg.textContent=err?.message||'Could not start recording.';msg.hidden=false}
  finally{btn.disabled=false;btn.textContent='Start Recording'}
@@ -249,7 +250,7 @@ async function finishRecording(redirect=true){
   for(let i=0;i<recordedFrames.length;i++){
    const f=recordedFrames[i];
    const up=await S4UGuides.api({action:'upload_screenshot',guide_id:activeGuide.id,step_id:f.id,data_url:f.screenshot});
-   steps.push({id:f.id,step_number:i+1,title:`Step ${i+1}`,instruction:'Describe what happens in this step.',page_url:null,page_title:null,clicked_element:null,screenshot_path:up.path,click_x:50,click_y:50,annotation_data:{},metadata:{capture_mode:'native_screen_share',captured_at:f.captured_at}});
+   steps.push({id:f.id,step_number:i+1,title:`Step ${i+1}`,instruction:'Describe what happens in this step.',page_url:null,page_title:null,clicked_element:null,screenshot_path:up.path,click_x:null,click_y:null,annotation_data:{},metadata:{capture_mode:'native_screen_share',captured_at:f.captured_at,marker_available:false}});
   }
   activeGuide.steps=steps;
   const r=await S4UGuides.api({action:'save_guide',guide:activeGuide});

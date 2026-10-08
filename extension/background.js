@@ -5,6 +5,7 @@ const GUIDE_API = SUPABASE_URL + "/functions/v1/guide-builder";
 const STATE_KEY = "s4u_guide_recorder_state_v2";
 const AUTH_KEY = "s4u_guide_recorder_auth_v1";
 let recordQueue = Promise.resolve();
+let captureSequenceQueue = Promise.resolve();
 
 async function getState() {
   const data = await chrome.storage.local.get(STATE_KEY);
@@ -226,7 +227,10 @@ function normalizeStep(step, index) {
     annotation_data: {},
     metadata: {
       element: step.element || {},
-      captured_at: step.captured_at || null
+      captured_at: step.captured_at || null,
+      capture_mode: "extension_click",
+      marker_baked: step.marker_baked === true,
+      sequence: Number(step.sequence || (index + 1))
     }
   };
 }
@@ -411,61 +415,66 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     if (message?.type === "RECORD_CLICK") {
-      const current = await getState();
-      if (!current.recording || !current.guide?.id || !sender.tab?.id) {
-        sendResponse({ ok: false, ignored: true });
+      if (!sender.tab?.id) {
+        sendResponse({ ok:false, ignored:true });
         return;
       }
 
-      // Capture the visible tab immediately, before uploads/API calls can delay
-      // the next click. Persistence is queued separately so rapid clicks are not lost.
-      let screenshot;
-      try {
-        screenshot = await chrome.tabs.captureVisibleTab(sender.tab.windowId, { format: "jpeg", quality: 92 });
-      } catch (error) {
-        const state = await getState();
-        state.last_error = "Screenshot capture failed: " + (error?.message || String(error));
-        await setState(state);
-        sendResponse({ ok: false, error: state.last_error });
-        return;
-      }
-
-      const captured = {
-        screenshot,
+      const eventPayload={
         url: message.url || sender.tab.url || "",
         page_title: message.page_title || sender.tab.title || "",
         element: message.element || {},
-        click: message.click || { x_pct: 50, y_pct: 50 },
+        click: message.click || null,
         title: message.title || null,
         instruction: message.instruction || null,
-        captured_at: new Date().toISOString()
+        captured_at: new Date().toISOString(),
+        tab_id: sender.tab.id,
+        window_id: sender.tab.windowId
       };
 
-      const task = recordQueue.then(async () => {
-        const state = await getState();
-        if (!state.recording || !state.guide?.id) return { ok:false, ignored:true };
-        const stepId = crypto.randomUUID();
-        const upload = await guideApi({ action:"upload_screenshot", guide_id:state.guide.id, step_id:stepId, data_url:captured.screenshot });
-        const label = captured.element?.label || "the highlighted control";
+      const captureTask=captureSequenceQueue.then(async()=>{
+        const state=await getState();
+        if(!state.recording||!state.guide?.id)return{ok:false,ignored:true};
+        const stepNumber=(state.steps?.length||0)+1;
+        const click=eventPayload.click||{};
+        const x=Number(click.x||0),y=Number(click.y||0);
+
+        try{
+          await chrome.tabs.sendMessage(eventPayload.tab_id,{type:"SHOW_CAPTURE_MARKER",number:stepNumber,x,y});
+          await new Promise(r=>setTimeout(r,35));
+        }catch{}
+
+        let screenshot;
+        try{
+          screenshot=await chrome.tabs.captureVisibleTab(eventPayload.window_id,{format:"jpeg",quality:92});
+        }finally{
+          try{await chrome.tabs.sendMessage(eventPayload.tab_id,{type:"HIDE_CAPTURE_MARKER"});}catch{}
+        }
+
+        const stepId=crypto.randomUUID();
+        const upload=await guideApi({action:"upload_screenshot",guide_id:state.guide.id,step_id:stepId,data_url:screenshot});
+        const label=eventPayload.element?.label||"the highlighted control";
         state.steps.push({
-          id: stepId,
-          title: captured.title || ("Step " + (state.steps.length + 1)),
-          instruction: captured.instruction || ("Select " + label + "."),
-          url: captured.url,
-          page_title: captured.page_title,
-          element: captured.element,
-          click: captured.click,
-          screenshot_path: upload.path,
-          screenshot_url: upload.url || null,
-          captured_at: captured.captured_at
+          id:stepId,
+          sequence:stepNumber,
+          title:eventPayload.title||("Step "+stepNumber),
+          instruction:eventPayload.instruction||("Select "+label+"."),
+          url:eventPayload.url,
+          page_title:eventPayload.page_title,
+          element:eventPayload.element,
+          click:eventPayload.click,
+          screenshot_path:upload.path,
+          screenshot_url:upload.url||null,
+          captured_at:eventPayload.captured_at,
+          marker_baked:true
         });
         await setState(state);
         await saveGuide(state);
-        return { ok:true, count:state.steps.length, guide_id:state.guide.id };
+        return{ok:true,count:state.steps.length,guide_id:state.guide.id,step_number:stepNumber};
       });
-      recordQueue = task.catch(() => {});
-      try { sendResponse(await task); }
-      catch (error) { sendResponse({ ok:false, error:error?.message || String(error) }); }
+      captureSequenceQueue=captureTask.catch(()=>{});
+      try{sendResponse(await captureTask)}
+      catch(error){sendResponse({ok:false,error:error?.message||String(error)})}
       return;
     }
 

@@ -79,6 +79,29 @@
     }
   },true);
 
-  chrome.runtime.onMessage.addListener((message,_sender,sendResponse)=>{if(message?.type==="RECORDER_PING")sendResponse({ok:true,loaded:true});if(message?.type==="RECORDER_STATE"){recorderActive=!!message.recording;sendResponse({ok:true})}});
+  let captureMarker=null;
+  function showCaptureMarker(message){
+    hideCaptureMarker();
+    const marker=document.createElement("div");
+    marker.id="s4u-guide-capture-marker";
+    marker.textContent=String(message.number||"");
+    Object.assign(marker.style,{
+      position:"fixed",left:Number(message.x||0)+"px",top:Number(message.y||0)+"px",
+      transform:"translate(-50%,-50%)",width:"34px",height:"34px",borderRadius:"50%",
+      background:"#ff6500",color:"#fff",border:"3px solid #fff",boxShadow:"0 2px 8px rgba(0,0,0,.35)",
+      display:"flex",alignItems:"center",justifyContent:"center",font:"800 16px Arial,sans-serif",
+      zIndex:"2147483647",pointerEvents:"none"
+    });
+    document.documentElement.appendChild(marker);
+    captureMarker=marker;
+  }
+  function hideCaptureMarker(){if(captureMarker){captureMarker.remove();captureMarker=null}else document.getElementById("s4u-guide-capture-marker")?.remove()}
+
+  chrome.runtime.onMessage.addListener((message,_sender,sendResponse)=>{
+    if(message?.type==="RECORDER_PING")sendResponse({ok:true,loaded:true});
+    if(message?.type==="RECORDER_STATE"){recorderActive=!!message.recording;sendResponse({ok:true});}
+    if(message?.type==="SHOW_CAPTURE_MARKER"){showCaptureMarker(message);sendResponse({ok:true});}
+    if(message?.type==="HIDE_CAPTURE_MARKER"){hideCaptureMarker();sendResponse({ok:true});}
+  });
   chrome.runtime.sendMessage({type:"GET_STATE"}).then(r=>{recorderActive=!!r?.state?.recording}).catch(()=>{});
 })();
