@@ -11,9 +11,23 @@ function safeReturnUrl(){
 }
 const back=document.querySelector('#backPortal');
 const returnUrl=safeReturnUrl();
+function returnToPortal(){
+  try{
+    if(window.opener && !window.opener.closed){
+      window.opener.focus();
+      window.close();
+      setTimeout(()=>{ if(!window.closed && returnUrl) location.href=returnUrl; },120);
+      return;
+    }
+  }catch{}
+  if(history.length>1){ history.back(); return; }
+  if(returnUrl){ location.href=returnUrl; return; }
+  location.href='https://screenings4u.com/';
+}
 if(back){
-  if(returnUrl){back.href=returnUrl;back.textContent='← Back to Portal'}
-  else{back.href='#';back.textContent='← Back';back.onclick=e=>{e.preventDefault();if(history.length>1)history.back();else location.href='https://screenings4u.com/';}}
+  back.href='#';
+  back.textContent='← Back to Portal';
+  back.addEventListener('click',e=>{e.preventDefault();returnToPortal();});
 }
 async function load(){
   const c=S4UGuidesConfig,r=await fetch(c.supabaseUrl+'/functions/v1/guide-catalog-public',{method:'POST',headers:{'Content-Type':'application/json','apikey':c.supabasePublishableKey},body:JSON.stringify({action:'get_guide',id})}),j=await r.json();
