@@ -2,6 +2,7 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const params=new URLSearchParams(location.search),guideId=params.get('id');
 let guide=null,saveTimer=null,saving=false,portalRegistry=[];
+let saveChain=Promise.resolve(),editRevision=0,lastSavedRevision=0;
 
 function markerStyle(step){
  const hasMarker=step.click_x!=null&&step.click_y!=null&&step.metadata?.capture_mode!=='native_screen_share'&&step.metadata?.marker_baked!==true;
@@ -20,16 +21,43 @@ function normalized(){
    steps:(guide.steps||[]).map((s,i)=>({...s,step_number:i+1}))
  };
 }
-async function save(createVersion=false){
- if(!guide||saving)return;
- saving=true;$('#saveState').textContent=createVersion?'Saving version…':'Saving…';
+function touch(){editRevision++;}
+async function persist(createVersion=false){
+ if(!guide)return;
+ const revisionAtStart=editRevision;
+ const payload=normalized();
+ saving=true;
+ $('#saveState').textContent=createVersion?'Saving version…':'Saving…';
  try{
-   const r=await S4UGuides.api({action:'save_guide',guide:normalized(),create_version:createVersion});
-   guide=r.guide;
-   $('#saveState').textContent=(createVersion?'Version '+guide.version+' saved':'Saved')+' · '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
+   const r=await S4UGuides.api({action:'save_guide',guide:payload,create_version:createVersion});
+   // Never replace local steps with an older network response. A user may have
+   // deleted/reordered/edited another step while this request was in flight.
+   if(r?.guide){
+     guide.version=r.guide.version;
+     guide.updated_at=r.guide.updated_at;
+     guide.published_at=r.guide.published_at;
+     guide.status=r.guide.status;
+   }
+   lastSavedRevision=Math.max(lastSavedRevision,revisionAtStart);
+   $('#saveState').textContent=(createVersion?'Version '+(r?.guide?.version||guide.version)+' saved':'Saved')+' · '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
+   return r;
  }finally{saving=false}
 }
-function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>save(false).catch(e=>{$('#saveState').textContent=e.message}),700)}
+function save(createVersion=false){
+ // Serialize every save. This prevents an in-flight autosave from causing a
+ // later delete/reorder save to be silently dropped.
+ saveChain=saveChain.catch(()=>{}).then(()=>persist(createVersion));
+ return saveChain;
+}
+function scheduleSave(){
+ clearTimeout(saveTimer);
+ saveTimer=setTimeout(()=>save(false).catch(e=>{$('#saveState').textContent=e.message}),700);
+}
+async function flushSave(){
+ clearTimeout(saveTimer);
+ if(editRevision>lastSavedRevision)await save(false);
+ else await saveChain.catch(()=>{});
+}
 function render(){
  if(!guide)return;
  $('#guideTitle').value=guide.title||'';
@@ -55,15 +83,15 @@ async function load(){
  guide=r.guide;
  render();
 }
-['guideTitle','guidePortal','guideCategory','guideAudience','guideIntro'].forEach(k=>$('#'+k).addEventListener('input',e=>{if(k==='guideTitle')$('#editorHeading').textContent=e.target.value;scheduleSave()}));
-$('#guideStatus').addEventListener('change',()=>save(true).catch(e=>S4UDialog.alert(e.message||'Could not save status.','Save failed')));
-$('#steps').addEventListener('input',e=>{const card=e.target.closest('.step-card');if(!card||!guide)return;const i=+card.dataset.i,field=e.target.dataset.field;if(field){guide.steps[i][field]=e.target.value;scheduleSave()}});
-$('#steps').addEventListener('click',e=>{const btn=e.target.closest('button');if(!btn||!guide)return;const card=btn.closest('.step-card'),i=+card.dataset.i,a=btn.dataset.action;if(a==='delete')guide.steps.splice(i,1);if(a==='up'&&i>0)[guide.steps[i-1],guide.steps[i]]=[guide.steps[i],guide.steps[i-1]];if(a==='down'&&i<guide.steps.length-1)[guide.steps[i+1],guide.steps[i]]=[guide.steps[i],guide.steps[i+1]];render();scheduleSave()});
-$('#steps').addEventListener('change',e=>{if(e.target.dataset.action!=='image'||!guide)return;const card=e.target.closest('.step-card'),i=+card.dataset.i,f=e.target.files?.[0];if(!f)return;const reader=new FileReader();reader.onload=async()=>{try{const step=guide.steps[i],up=await S4UGuides.api({action:'upload_screenshot',guide_id:guide.id,step_id:step.id,data_url:reader.result});step.screenshot_path=up.path;step.screenshot_url=up.url;render();await save(false)}catch(err){S4UDialog.alert(err.message||'Could not replace screenshot.','Upload failed')}};reader.readAsDataURL(f)});
-$('#addStep').onclick=()=>{if(!guide)return;guide.steps.push({id:crypto.randomUUID(),title:'Step '+(guide.steps.length+1),instruction:'',screenshot_path:null,screenshot_url:null,click_x:50,click_y:50,annotation_data:{},metadata:{}});render();scheduleSave()};
+['guideTitle','guidePortal','guideCategory','guideAudience','guideIntro'].forEach(k=>$('#'+k).addEventListener('input',e=>{if(k==='guideTitle')$('#editorHeading').textContent=e.target.value;touch();scheduleSave()}));
+$('#guideStatus').addEventListener('change',()=>{touch();save(true).catch(e=>S4UDialog.alert(e.message||'Could not save status.','Save failed'))});
+$('#steps').addEventListener('input',e=>{const card=e.target.closest('.step-card');if(!card||!guide)return;const i=+card.dataset.i,field=e.target.dataset.field;if(field){guide.steps[i][field]=e.target.value;touch();scheduleSave()}});
+$('#steps').addEventListener('click',e=>{const btn=e.target.closest('button');if(!btn||!guide)return;const card=btn.closest('.step-card'),i=+card.dataset.i,a=btn.dataset.action;if(a==='delete')guide.steps.splice(i,1);if(a==='up'&&i>0)[guide.steps[i-1],guide.steps[i]]=[guide.steps[i],guide.steps[i-1]];if(a==='down'&&i<guide.steps.length-1)[guide.steps[i+1],guide.steps[i]]=[guide.steps[i],guide.steps[i+1]];touch();render();scheduleSave()});
+$('#steps').addEventListener('change',e=>{if(e.target.dataset.action!=='image'||!guide)return;const card=e.target.closest('.step-card'),i=+card.dataset.i,f=e.target.files?.[0];if(!f)return;const reader=new FileReader();reader.onload=async()=>{try{const step=guide.steps[i],up=await S4UGuides.api({action:'upload_screenshot',guide_id:guide.id,step_id:step.id,data_url:reader.result});step.screenshot_path=up.path;step.screenshot_url=up.url;touch();render();await save(false)}catch(err){S4UDialog.alert(err.message||'Could not replace screenshot.','Upload failed')}};reader.readAsDataURL(f)});
+$('#addStep').onclick=()=>{if(!guide)return;guide.steps.push({id:crypto.randomUUID(),title:'Step '+(guide.steps.length+1),instruction:'',screenshot_path:null,screenshot_url:null,click_x:50,click_y:50,annotation_data:{},metadata:{}});touch();render();scheduleSave()};
 $('#saveVersion').onclick=()=>save(true).catch(e=>S4UDialog.alert(e.message||'Could not save version.','Save failed'));
-$('#previewGuide').onclick=()=>window.open('guide.html?id='+encodeURIComponent(guide.id),'_blank');
-$('#printGuide').onclick=()=>window.open('guide.html?id='+encodeURIComponent(guide.id)+'&print=1','_blank');
+$('#previewGuide').onclick=async()=>{try{await flushSave();window.open('guide.html?id='+encodeURIComponent(guide.id)+'&t='+Date.now(),'_blank')}catch(e){S4UDialog.alert(e.message||'Could not save before preview.','Preview')}};
+$('#printGuide').onclick=async()=>{try{await flushSave();window.open('guide.html?id='+encodeURIComponent(guide.id)+'&print=1&t='+Date.now(),'_blank')}catch(e){S4UDialog.alert(e.message||'Could not save before PDF.','Generate PDF')}};
 $('#exportJson').onclick=()=>{const exportGuide=normalized(),blob=new Blob([JSON.stringify(exportGuide,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(guide.title||'guide').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'.json';a.click();URL.revokeObjectURL(a.href)};
 $('#deleteGuide').onclick=async()=>{if(!await S4UDialog.confirm('Delete this guide? This cannot be undone.',{title:'Delete guide',confirmText:'Delete Guide',danger:true}))return;try{await S4UGuides.api({action:'delete_guide',id:guide.id});location.href='./'}catch(e){await S4UDialog.alert(e.message||'Could not delete guide.','Delete failed')}};
 load().catch(async e=>{if(e.status!==401&&e.status!==403)await S4UDialog.alert(e.message||'Could not load guide.','Guide Editor');if(e.status===401)location.replace('login.html')});
