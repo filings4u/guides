@@ -7,20 +7,20 @@
 <meta name="robots" content="noindex,nofollow"><meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate"><meta name="referrer" content="no-referrer">
 <title>screenings4u Guide Builder</title>
 
-<link rel="stylesheet" href="assets/css/app.css?v=6">
+<link rel="stylesheet" href="assets/css/app.css?v=7">
 </head>
 <body>
 <header class="topbar">
   <a class="brand" href="./"><img src="images/logo.png" alt="screenings4u"><span><strong>Guide Builder</strong><small>Documentation Studio</small></span></a>
   <div class="top-actions">
     <label class="btn ghost">Import Guide<input id="importFile" type="file" accept=".json,application/json" hidden></label>
-    <a id="membersLink" class="btn ghost" href="members.html" hidden>Members</a><button id="signOut" class="btn ghost">Sign Out</button><button id="startRecorderTop" class="btn recorder-btn">Start Recording</button><button id="newGuide" class="btn primary">Create Guide</button>
+    <a id="membersLink" class="btn ghost" href="members.html" hidden>Members</a><button id="signOut" class="btn ghost">Sign Out</button><a class="btn ghost" href="install-recorder.html">Recorder Extension</a><button id="startRecorderTop" class="btn recorder-btn">Start Recording</button><button id="newGuide" class="btn primary">Create Guide</button>
   </div>
 </header>
 <main class="shell">
   <section class="hero">
     <div><span class="eyebrow">SCREENINGS4U DOCUMENTATION STUDIO</span><h1>Create detailed how-to guides from real portal workflows.</h1><p>Use the screenings4u Guide Recorder for click-by-click workflow capture. Every portal interaction is saved with its screenshot, click position, page, and control details. If the recorder extension is unavailable, Guide Builder can fall back to browser screen sharing.</p></div>
-    <div class="hero-actions"><button id="heroRecord" class="btn primary">Start Recording</button><button id="heroNewGuide" class="btn secondary">Create Manually</button></div>
+    <div class="hero-actions"><button id="heroRecord" class="btn primary">Start Recording</button><a class="btn secondary" href="install-recorder.html">Install Recorder</a><button id="heroNewGuide" class="btn secondary">Create Manually</button></div>
   </section>
   <section class="stats">
     <article><strong id="guideCount">0</strong><span>Total Guides</span></article>
@@ -47,7 +47,7 @@
     <div class="recorder-controls">
       <div id="recorderIdle">
         <button id="startRecorder" class="btn primary full">Start Recording</button>
-        <p class="recorder-help">For the most complete capture, install/use the included screenings4u Guide Recorder extension. If it is not available, the browser screen-share recorder will be used as a fallback.</p>
+        <p class="recorder-help">For numbered click guides, install the screenings4u Guide Recorder extension from the Recorder Extension link above. If it is not available, the browser screen-share recorder will be used as a fallback.</p>
       </div>
       <div id="recorderActive" hidden>
         <div class="recording-live"><span class="recording-pulse"></span><div><strong>Recording in progress</strong><span id="recordingGuideTitle">Workflow guide</span></div></div>
@@ -82,5 +82,5 @@
   </form>
  </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="assets/js/runtime-config.js?v=1"></script><script src="assets/js/dialogs.js?v=6"></script><script src="assets/js/auth-client.js?v=6"></script><script src="assets/js/guard.js?v=6"></script><script src="assets/js/app.js?v=6"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="assets/js/runtime-config.js?v=1"></script><script src="assets/js/dialogs.js?v=6"></script><script src="assets/js/auth-client.js?v=6"></script><script src="assets/js/guard.js?v=6"></script><script src="assets/js/app.js?v=7"></script>
 </body></html>

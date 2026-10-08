@@ -229,7 +229,7 @@ async function beginRecording(e){
    extensionMode=true;closeRecorderModal();renderRecorderState(r.state);setRecorderReady('Recording actual portal clicks with the screenings4u Guide Recorder');
    if(extensionPoll)clearInterval(extensionPoll);extensionPoll=setInterval(pollExtensionState,700);await pollExtensionState();return;
   }
-  await S4UDialog.alert('The click-perfect recorder extension is not connected. Screen-share mode can capture page images, but it cannot know which controls you clicked and will not add click numbers. Connect/reload the screenings4u Guide Recorder extension for numbered click guides.','Click recorder required');
+  await S4UDialog.alert('The click-perfect recorder is not connected. Install it from Recorder Extension on the Guide Builder home page, then reload this site. Screen-share mode can capture page images, but it cannot know which controls you clicked and will not add click numbers.','Click recorder required');
   await nativeBeginRecording(e);
  }catch(err){msg.textContent=err?.message||'Could not start recording.';msg.hidden=false}
  finally{btn.disabled=false;btn.textContent='Start Recording'}
