@@ -1,0 +1,53 @@
+{
+  "manifest_version": 3,
+  "name": "screenings4u Guide Recorder",
+  "short_name": "S4U Recorder",
+  "version": "4.1.0",
+  "version_name": "4.1 Reliable Click Recorder",
+  "description": "Capture screenings4u portal workflows click-by-click with numbered screenshots for Guide Builder.",
+  "minimum_chrome_version": "114",
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://screenings4u.com/*",
+    "https://*.screenings4u.com/*",
+    "https://elpbnytpciqnbexiaebp.supabase.co/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "screenings4u Guide Recorder",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://screenings4u.com/*",
+        "https://*.screenings4u.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ]
+}
